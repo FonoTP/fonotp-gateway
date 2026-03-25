@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FonOTP Voice Gateway Demo</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <p class="eyebrow">Real-Time Voice Demo</p>
+        <h1>WebRTC Gateway Console</h1>
+        <p class="lede">
+          Browser microphone audio is sent over WebRTC, authorized against PostgreSQL, and bridged
+          into a downstream WebSocket voice service.
+        </p>
+      </section>
+
+      <section class="panel controls">
+        <div class="field">
+          <label for="token">Bearer Token</label>
+          <textarea id="token" rows="3" spellcheck="false"></textarea>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="service">Authorized Service</label>
+            <select id="service"></select>
+          </div>
+          <div class="field">
+            <label for="endpoint">WebSocket Endpoint</label>
+            <input id="endpoint" type="text" spellcheck="false" />
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="loadProfile" class="secondary">Load Profile</button>
+          <button id="connect">Connect</button>
+          <button id="disconnect" class="danger" disabled>Disconnect</button>
+        </div>
+
+        <div class="demo-flow">
+          <strong>What To Expect</strong>
+          <p>1. Load profile. 2. Connect and allow mic. 3. Hear a short startup melody. 4. Speak after the melody and listen for your voice to come back with a short delay.</p>
+        </div>
+      </section>
+
+      <section class="grid">
+        <article class="panel status-card">
+          <div class="status-header">
+            <span>Session State</span>
+            <strong id="statusBadge" data-state="idle">idle</strong>
+          </div>
+          <dl class="facts">
+            <div>
+              <dt>User</dt>
+              <dd id="userLabel">Not loaded</dd>
+            </div>
+            <div>
+              <dt>Service</dt>
+              <dd id="serviceLabel">None</dd>
+            </div>
+            <div>
+              <dt>Session ID</dt>
+              <dd id="sessionLabel">None</dd>
+            </div>
+            <div>
+              <dt>Demo Mode</dt>
+              <dd id="modeLabel">Waiting to connect</dd>
+            </div>
+          </dl>
+        </article>
+
+        <article class="panel meter-card">
+          <div class="meter-copy">
+            <span>Mic Input</span>
+            <strong id="micValue">0%</strong>
+          </div>
+          <div class="meter-track">
+            <div id="meterFill" class="meter-fill"></div>
+          </div>
+          <audio id="remoteAudio" autoplay playsinline controls></audio>
+        </article>
+      </section>
+
+      <section class="panel log-panel">
+        <div class="status-header">
+          <span>Event Log</span>
+          <button id="clearLog" class="ghost">Clear</button>
+        </div>
+        <pre id="log"></pre>
+      </section>
+    </main>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

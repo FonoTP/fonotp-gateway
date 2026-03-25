@@ -1,0 +1,49 @@
+import Fastify from "fastify";
+import fastifyStatic from "@fastify/static";
+import websocket from "@fastify/websocket";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+import { config } from "./config.js";
+import { Database } from "./db.js";
+import { GatewaySessionStore } from "./gateway-session-store.js";
+import { WebRtcGateway } from "./webrtc-gateway.js";
+import { registerRoutes } from "./routes.js";
+
+const currentDirectory = dirname(fileURLToPath(import.meta.url));
+const publicDirectory = join(currentDirectory, "..", "public");
+
+const app = Fastify({
+  logger: {
+    level: config.logLevel
+  }
+});
+
+await app.register(websocket);
+await app.register(fastifyStatic, {
+  root: publicDirectory
+});
+
+const db = new Database(config.databaseUrl);
+const sessionStore = new GatewaySessionStore();
+const gateway = new WebRtcGateway({
+  config,
+  db,
+  logger: app.log,
+  sessionStore
+});
+
+await registerRoutes(app, { db, gateway, config });
+
+app.addHook("onClose", async () => {
+  await db.close();
+});
+
+try {
+  await app.listen({
+    host: config.host,
+    port: config.port
+  });
+} catch (error) {
+  app.log.error(error, "Failed to start WebRTC gateway");
+  process.exitCode = 1;
+}
