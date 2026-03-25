@@ -175,6 +175,18 @@ button.ghost {
   color: var(--ink);
 }
 
+.ghost-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: rgba(24, 33, 38, 0.08);
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: none;
+}
+
 button.danger {
   background: var(--danger);
 }
@@ -188,6 +200,12 @@ button:disabled {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
   gap: 12px;
 }
 

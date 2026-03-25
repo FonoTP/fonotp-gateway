@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Browser Audio Diagnostics</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <p class="eyebrow">Browser Audio Check</p>
+        <h1>Audio Diagnostics</h1>
+        <p class="lede">
+          This page does not use the gateway. It only tests browser speaker output and live mic
+          playback.
+        </p>
+      </section>
+
+      <section class="panel controls">
+        <div class="actions">
+          <button id="playTone">Play Test Tone</button>
+          <button id="loopMicElement" class="secondary">Loop Mic via Audio Element</button>
+          <button id="loopMicContext" class="secondary">Loop Mic via AudioContext</button>
+          <button id="stopAll" class="danger">Stop</button>
+        </div>
+
+        <div class="demo-flow">
+          <strong>How To Use It</strong>
+          <p>First click Play Test Tone and confirm you hear a clear beep. Then click Loop My Mic and confirm your own voice comes back through the browser. If both work, browser audio is fine and the gateway return path is the issue.</p>
+        </div>
+      </section>
+
+      <section class="grid">
+        <article class="panel status-card">
+          <div class="status-header">
+            <span>Output State</span>
+            <strong id="outputState" data-state="idle">idle</strong>
+          </div>
+          <dl class="facts">
+            <div>
+              <dt>Tone Test</dt>
+              <dd id="toneState">Not started</dd>
+            </div>
+            <div>
+              <dt>Audio Element Loopback</dt>
+              <dd id="elementLoopState">Not started</dd>
+            </div>
+            <div>
+              <dt>AudioContext Loopback</dt>
+              <dd id="contextLoopState">Not started</dd>
+            </div>
+          </dl>
+        </article>
+
+        <article class="panel meter-card">
+          <div class="meter-copy">
+            <span>Mic Level</span>
+            <strong id="micValue">0%</strong>
+          </div>
+          <div class="meter-track">
+            <div id="meterFill" class="meter-fill"></div>
+          </div>
+          <audio id="loopbackAudio" autoplay playsinline controls></audio>
+        </article>
+      </section>
+
+      <section class="panel log-panel">
+        <div class="status-header">
+          <span>Diagnostics Log</span>
+          <a href="/" class="ghost-link">Back To Gateway Demo</a>
+        </div>
+        <pre id="log"></pre>
+      </section>
+    </main>
+
+    <script type="module" src="/audio-test.js"></script>
+  </body>
+</html>
