@@ -1,6 +1,8 @@
 import wrtc from "@roamhq/wrtc";
 import { randomUUID } from "node:crypto";
+import { join } from "node:path";
 import { AudioBridge } from "./audio-bridge.js";
+import { WavFileWriter } from "./wav-file-writer.js";
 
 const {
   RTCPeerConnection,
@@ -44,6 +46,9 @@ export class WebRtcGateway {
       wsUrl: wsEndpoint,
       logger: this.logger
     });
+    const downstreamRecording = await new WavFileWriter(
+      join(this.config.recordingsDir, `${gatewaySessionId}-downstream.wav`)
+    ).init();
     let inboundPcmFrames = 0;
     let outboundPcmFrames = 0;
     let lastAudioLogAt = Date.now();
@@ -54,6 +59,7 @@ export class WebRtcGateway {
       outboundTrack,
       outboundAudioSource,
       audioBridge,
+      downstreamRecording,
       userId: selectedService.user_id,
       serviceKey
     });
@@ -69,6 +75,7 @@ export class WebRtcGateway {
     });
     audioBridge.onInboundAudio((samples) => {
       inboundPcmFrames += 1;
+      downstreamRecording.appendSamples(samples);
       for (const chunk of splitSamples(samples, OUTBOUND_FRAME_SIZE)) {
         outboundAudioSource.onData({
           samples: chunk,
@@ -159,6 +166,7 @@ export class WebRtcGateway {
       session.outboundTrack?.stop?.();
       session.audioBridge?.close?.();
       session.peerConnection?.close?.();
+      await session.downstreamRecording?.close?.();
       this.sessionStore.delete(sessionId);
     }
 

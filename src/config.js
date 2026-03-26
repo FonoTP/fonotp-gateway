@@ -1,4 +1,5 @@
 import dotenv from "dotenv";
+import { resolve } from "node:path";
 
 dotenv.config();
 
@@ -36,7 +37,8 @@ export const config = {
   authBearerPrefix: process.env.AUTH_BEARER_PREFIX ?? "Bearer",
   allowedServiceOrigins: parseCsvEnv("ALLOWED_SERVICE_ORIGINS"),
   iceServers: parseJsonEnv("ICE_SERVERS", [{ urls: "stun:stun.l.google.com:19302" }]),
-  demoDefaultToken: process.env.DEMO_DEFAULT_TOKEN ?? "demo-user-token"
+  demoDefaultToken: process.env.DEMO_DEFAULT_TOKEN ?? "demo-user-token",
+  recordingsDir: resolve(process.env.RECORDINGS_DIR ?? "recordings")
 };
 
 if (!config.databaseUrl) {
