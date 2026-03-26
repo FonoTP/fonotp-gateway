@@ -22,7 +22,8 @@ const state = {
   localStream: null,
   sessionId: null,
   token: "",
-  meterCleanup: null
+  meterCleanup: null,
+  remoteStream: null
 };
 
 function log(message, details) {
@@ -142,10 +143,23 @@ async function connect() {
   }
 
   peerConnection.ontrack = (event) => {
-    const [remoteStream] = event.streams;
+    const [eventStream] = event.streams;
+    const remoteStream =
+      eventStream ??
+      state.remoteStream ??
+      new MediaStream(event.track ? [event.track] : []);
+
+    if (!eventStream && event.track) {
+      remoteStream.addTrack?.(event.track);
+    }
+
+    state.remoteStream = remoteStream;
     elements.remoteAudio.srcObject = remoteStream;
     setModeLabel("Remote audio attached. Waiting for startup melody.");
-    log("Remote audio stream attached");
+    log("Remote audio stream attached", {
+      streamlessTrack: event.streams.length === 0,
+      trackId: event.track?.id ?? null
+    });
     void attemptRemotePlayback("remote-track");
   };
 
@@ -236,6 +250,7 @@ function cleanupRtc(resetSessionLabel) {
   }
 
   state.localStream = null;
+  state.remoteStream = null;
   state.meterCleanup?.();
   state.meterCleanup = null;
   elements.remoteAudio.srcObject = null;
