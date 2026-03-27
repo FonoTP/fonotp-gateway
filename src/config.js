@@ -36,6 +36,7 @@ export const config = {
   controlPlaneRuntimeToken: process.env.CONTROL_PLANE_RUNTIME_TOKEN ?? "demo-runtime-secret",
   sessionTtlSeconds: Number(process.env.SESSION_TTL_SECONDS ?? 900),
   allowedServiceOrigins: parseCsvEnv("ALLOWED_SERVICE_ORIGINS"),
+  allowedBrowserOrigins: parseCsvEnv("ALLOWED_BROWSER_ORIGINS"),
   iceServers: parseJsonEnv("ICE_SERVERS", [{ urls: "stun:stun.l.google.com:19302" }]),
   recordingsDir: resolve(process.env.RECORDINGS_DIR ?? "recordings"),
   sonioxApiKey: process.env.SONIOX_API_KEY ?? "",

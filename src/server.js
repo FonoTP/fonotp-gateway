@@ -1,4 +1,5 @@
 import Fastify from "fastify";
+import cors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
 import websocket from "@fastify/websocket";
 import { fileURLToPath } from "node:url";
@@ -19,6 +20,18 @@ const app = Fastify({
 });
 
 await app.register(websocket);
+await app.register(cors, {
+  origin(origin, callback) {
+    if (!origin || config.allowedBrowserOrigins.length === 0 || config.allowedBrowserOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error("Origin not allowed"), false);
+  },
+  methods: ["GET", "POST", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+});
 await app.register(fastifyStatic, {
   root: publicDirectory
 });
