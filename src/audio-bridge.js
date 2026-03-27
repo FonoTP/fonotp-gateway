@@ -86,6 +86,14 @@ export class AudioBridge {
     this.ws.send(frame);
   }
 
+  sendControlMessage(message) {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    this.ws.send(JSON.stringify(message));
+  }
+
   close() {
     if (!this.ws) {
       return;

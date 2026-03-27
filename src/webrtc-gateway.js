@@ -65,12 +65,18 @@ export class WebRtcGateway {
       caller,
       language,
       sttProvider,
-      resolvedSession
+      resolvedSession,
+      browserEventsChannel: null
     });
 
     await audioBridge.connect();
     audioBridge.onControlMessage((message) => {
       this.logger.info({ gatewaySessionId, message }, "Downstream control message");
+      const session = this.sessionStore.get(gatewaySessionId);
+      const channel = session?.browserEventsChannel;
+      if (channel?.readyState === "open") {
+        channel.send(JSON.stringify(message));
+      }
     });
     audioBridge.onInboundAudio((samples) => {
       inboundPcmFrames += 1;
@@ -114,6 +120,45 @@ export class WebRtcGateway {
       });
     };
 
+    peerConnection.ondatachannel = (event) => {
+      const channel = event.channel;
+
+      channel.onopen = () => {
+        const session = this.sessionStore.get(gatewaySessionId);
+        if (!session) {
+          return;
+        }
+
+        this.sessionStore.set(gatewaySessionId, {
+          ...session,
+          browserEventsChannel: channel
+        });
+
+        channel.send(
+          JSON.stringify({
+            type: "gateway.session.ready",
+            sessionId: gatewaySessionId,
+            sttProvider,
+            language
+          })
+        );
+      };
+
+      channel.onmessage = (rawEvent) => {
+        try {
+          const message = JSON.parse(rawEvent.data);
+          if (message.type === "gateway.user_text") {
+            audioBridge.sendControlMessage({
+              type: "user_text",
+              text: String(message.text || "")
+            });
+          }
+        } catch (error) {
+          this.logger.warn({ gatewaySessionId, err: error }, "Failed to parse browser control message");
+        }
+      };
+    };
+
     peerConnection.onconnectionstatechange = async () => {
       const state = peerConnection.connectionState;
       this.logger.info({ gatewaySessionId, state }, "WebRTC connection state changed");
@@ -144,6 +189,7 @@ export class WebRtcGateway {
       session.sink?.stop?.();
       session.outboundTrack?.stop?.();
       session.audioBridge?.close?.();
+      session.browserEventsChannel?.close?.();
       session.peerConnection?.close?.();
       await session.downstreamRecording?.close?.();
       this.sessionStore.delete(sessionId);
