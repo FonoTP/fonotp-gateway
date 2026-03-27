@@ -25,9 +25,16 @@ export class WebRtcGateway {
     this.assertServiceOriginAllowed(wsEndpoint);
 
     const gatewaySessionId = randomUUID();
-    const downstreamSessionId = randomUUID();
     const expiresAt = new Date(Date.now() + this.config.sessionTtlSeconds * 1000);
     const reportToken = randomUUID();
+    const { callSessionId } = await this.controlPlane.createCallSession({
+      organizationId: resolvedSession.organization.id,
+      platformUserId: resolvedSession.user.userId,
+      agentId: resolvedSession.agent.id,
+      runtimeSessionId: gatewaySessionId,
+      language,
+      sttProvider
+    });
 
     const peerConnection = new RTCPeerConnection({
       iceServers: this.config.iceServers
@@ -40,10 +47,7 @@ export class WebRtcGateway {
       sessionId: gatewaySessionId,
       wsUrl: wsEndpoint,
       startMessage: {
-        sessionId: downstreamSessionId,
-        agent: resolvedSession.agent,
-        language,
-        sttProvider
+        sessionId: callSessionId
       },
       logger: this.logger
     });

@@ -43,4 +43,24 @@ export class ControlPlaneClient {
 
     return payload;
   }
+
+  async createCallSession(input) {
+    const response = await fetch(`${this.baseUrl}/api/internal/voice/callsessions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${this.runtimeToken}`
+      },
+      body: JSON.stringify(input)
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error(payload.error || "Failed to create call session");
+      error.statusCode = response.status;
+      throw error;
+    }
+
+    return payload;
+  }
 }
