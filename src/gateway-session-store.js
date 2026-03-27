@@ -11,6 +11,10 @@ export class GatewaySessionStore {
     return this.sessions.get(sessionId);
   }
 
+  values() {
+    return this.sessions.values();
+  }
+
   delete(sessionId) {
     this.sessions.delete(sessionId);
   }

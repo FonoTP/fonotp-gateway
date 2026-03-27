@@ -4,7 +4,7 @@ import websocket from "@fastify/websocket";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { config } from "./config.js";
-import { Database } from "./db.js";
+import { ControlPlaneClient } from "./control-plane-client.js";
 import { GatewaySessionStore } from "./gateway-session-store.js";
 import { WebRtcGateway } from "./webrtc-gateway.js";
 import { registerRoutes } from "./routes.js";
@@ -23,20 +23,19 @@ await app.register(fastifyStatic, {
   root: publicDirectory
 });
 
-const db = new Database(config.databaseUrl);
+const controlPlane = new ControlPlaneClient({
+  baseUrl: config.controlPlaneBaseUrl,
+  runtimeToken: config.controlPlaneRuntimeToken
+});
 const sessionStore = new GatewaySessionStore();
 const gateway = new WebRtcGateway({
   config,
-  db,
+  controlPlane,
   logger: app.log,
   sessionStore
 });
 
-await registerRoutes(app, { db, gateway, config });
-
-app.addHook("onClose", async () => {
-  await db.close();
-});
+await registerRoutes(app, { controlPlane, gateway, config });
 
 try {
   await app.listen({

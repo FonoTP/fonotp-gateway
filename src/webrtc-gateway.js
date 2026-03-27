@@ -13,26 +13,21 @@ const {
 const OUTBOUND_FRAME_SIZE = 480;
 
 export class WebRtcGateway {
-  constructor({ config, db, logger, sessionStore }) {
+  constructor({ config, controlPlane, logger, sessionStore }) {
     this.config = config;
-    this.db = db;
+    this.controlPlane = controlPlane;
     this.logger = logger;
     this.sessionStore = sessionStore;
   }
 
-  async createSession({ authSession, offerSdp, serviceKey, wsEndpointOverride }) {
-    const selectedService = authSession.find((row) => row.service_key === serviceKey);
-    if (!selectedService) {
-      const error = new Error(`Service "${serviceKey}" is not authorized for this session`);
-      error.statusCode = 403;
-      throw error;
-    }
-
-    const wsEndpoint = wsEndpointOverride ?? selectedService.ws_endpoint;
+  async createSession({ resolvedSession, offerSdp, caller, language, sttProvider }) {
+    const wsEndpoint = resolvedSession.agent.runtimeUrl;
     this.assertServiceOriginAllowed(wsEndpoint);
 
     const gatewaySessionId = randomUUID();
+    const downstreamSessionId = randomUUID();
     const expiresAt = new Date(Date.now() + this.config.sessionTtlSeconds * 1000);
+    const reportToken = randomUUID();
 
     const peerConnection = new RTCPeerConnection({
       iceServers: this.config.iceServers
@@ -44,6 +39,12 @@ export class WebRtcGateway {
     const audioBridge = new AudioBridge({
       sessionId: gatewaySessionId,
       wsUrl: wsEndpoint,
+      startMessage: {
+        sessionId: downstreamSessionId,
+        agent: resolvedSession.agent,
+        language,
+        sttProvider
+      },
       logger: this.logger
     });
     const downstreamRecording = await new WavFileWriter(
@@ -60,18 +61,16 @@ export class WebRtcGateway {
       outboundAudioSource,
       audioBridge,
       downstreamRecording,
-      userId: selectedService.user_id,
-      serviceKey
+      reportToken,
+      caller,
+      language,
+      sttProvider,
+      resolvedSession
     });
 
     await audioBridge.connect();
-    audioBridge.onControlMessage(async (message) => {
+    audioBridge.onControlMessage((message) => {
       this.logger.info({ gatewaySessionId, message }, "Downstream control message");
-      await this.db.updateGatewaySessionStatus(gatewaySessionId, "active", {
-        email: selectedService.email,
-        displayName: selectedService.display_name,
-        downstream: message
-      });
     });
     audioBridge.onInboundAudio((samples) => {
       inboundPcmFrames += 1;
@@ -119,10 +118,6 @@ export class WebRtcGateway {
       const state = peerConnection.connectionState;
       this.logger.info({ gatewaySessionId, state }, "WebRTC connection state changed");
 
-      if (state === "connected") {
-        await this.db.updateGatewaySessionStatus(gatewaySessionId, "connected");
-      }
-
       if (["failed", "closed", "disconnected"].includes(state)) {
         await this.closeSession(gatewaySessionId, state);
       }
@@ -135,27 +130,11 @@ export class WebRtcGateway {
     await peerConnection.setLocalDescription(answer);
     await waitForIceGatheringComplete(peerConnection);
 
-    await this.db.createGatewaySession({
-      id: gatewaySessionId,
-      userId: selectedService.user_id,
-      authSessionId: selectedService.session_id,
-      serviceKey,
-      wsEndpoint,
-      status: "pending",
-      expiresAt,
-      metadata: {
-        email: selectedService.email,
-        displayName: selectedService.display_name,
-        downstream: {
-          mode: "connecting"
-        }
-      }
-    });
-
     return {
       sessionId: gatewaySessionId,
       answerSdp: peerConnection.localDescription.sdp,
-      expiresAt
+      expiresAt,
+      reportToken
     };
   }
 
@@ -169,8 +148,43 @@ export class WebRtcGateway {
       await session.downstreamRecording?.close?.();
       this.sessionStore.delete(sessionId);
     }
+  }
 
-    await this.db.updateGatewaySessionStatus(sessionId, reason, { closedReason: reason });
+  getSession(sessionId) {
+    return this.sessionStore.get(sessionId) ?? null;
+  }
+
+  async saveReport(sessionId, report) {
+    const session = this.sessionStore.get(sessionId);
+    if (!session) {
+      const error = new Error("Gateway session not found");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (report?.reportToken !== session.reportToken) {
+      const error = new Error("Invalid report token");
+      error.statusCode = 401;
+      throw error;
+    }
+
+    const result = await this.controlPlane.persistCallReport({
+      runtimeSessionId: sessionId,
+      organizationId: session.resolvedSession.organization.id,
+      platformUserId: session.resolvedSession.user.userId,
+      agentId: session.resolvedSession.agent.id,
+      caller: session.caller || "browser-client / unknown",
+      status: report.status || "Completed",
+      summary: report.summary || null,
+      transcript: Array.isArray(report.transcript) ? report.transcript : [],
+      startedAt: report.startedAt || new Date().toISOString(),
+      endedAt: report.endedAt || new Date().toISOString(),
+      charactersIn: Number(report.charactersIn) || 0,
+      charactersOut: Number(report.charactersOut) || 0
+    });
+
+    await this.closeSession(sessionId, "reported");
+    return result;
   }
 
   assertServiceOriginAllowed(wsUrl) {

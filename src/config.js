@@ -32,15 +32,12 @@ export const config = {
   host: process.env.HOST ?? "0.0.0.0",
   port: Number(process.env.PORT ?? 8080),
   logLevel: process.env.LOG_LEVEL ?? "info",
-  databaseUrl: process.env.DATABASE_URL,
+  controlPlaneBaseUrl: process.env.CONTROL_PLANE_BASE_URL ?? "http://127.0.0.1:3001",
+  controlPlaneRuntimeToken: process.env.CONTROL_PLANE_RUNTIME_TOKEN ?? "demo-runtime-secret",
   sessionTtlSeconds: Number(process.env.SESSION_TTL_SECONDS ?? 900),
-  authBearerPrefix: process.env.AUTH_BEARER_PREFIX ?? "Bearer",
   allowedServiceOrigins: parseCsvEnv("ALLOWED_SERVICE_ORIGINS"),
   iceServers: parseJsonEnv("ICE_SERVERS", [{ urls: "stun:stun.l.google.com:19302" }]),
-  demoDefaultToken: process.env.DEMO_DEFAULT_TOKEN ?? "demo-user-token",
-  recordingsDir: resolve(process.env.RECORDINGS_DIR ?? "recordings")
+  recordingsDir: resolve(process.env.RECORDINGS_DIR ?? "recordings"),
+  sonioxApiKey: process.env.SONIOX_API_KEY ?? "",
+  sonioxRealtimeModel: process.env.SONIOX_REALTIME_MODEL ?? "stt-rt-preview"
 };
-
-if (!config.databaseUrl) {
-  throw new Error("DATABASE_URL is required");
-}

@@ -21,9 +21,10 @@ function bufferToInt16Array(buffer) {
 }
 
 export class AudioBridge {
-  constructor({ sessionId, wsUrl, wsFactory = (url) => new WebSocket(url), logger }) {
+  constructor({ sessionId, wsUrl, startMessage = null, wsFactory = (url) => new WebSocket(url), logger }) {
     this.sessionId = sessionId;
     this.wsUrl = wsUrl;
+    this.startMessage = startMessage;
     this.wsFactory = wsFactory;
     this.logger = logger;
     this.ws = null;
@@ -39,10 +40,12 @@ export class AudioBridge {
     });
 
     this.ws.send(
-      JSON.stringify({
-        type: "gateway.session.started",
-        sessionId: this.sessionId
-      })
+      JSON.stringify(
+        this.startMessage ?? {
+          type: "gateway.session.started",
+          sessionId: this.sessionId
+        }
+      )
     );
   }
 
